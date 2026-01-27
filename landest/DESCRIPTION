@@ -1,0 +1,10 @@
+Package: landest
+Type: Package
+Title: Landmark Estimation of Survival and Treatment Effect
+Version: 1.2
+Date: 2023-08-25
+Author: Layla Parast
+Maintainer: Layla Parast <parast@austin.utexas.edu>
+Description: Provides functions to estimate survival and a treatment effect using a landmark estimation approach.
+License: GPL
+Imports: stats, survival
