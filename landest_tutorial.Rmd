@@ -1,0 +1,91 @@
+---
+title: "Tutorial for the landest package"
+output:
+  html_document:
+---
+
+```{r global_options, echo=FALSE}
+knitr::opts_chunk$set(fig.width=7, warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+We will go through examples using the main functions in the **landest** R package. If you are viewing the html version of this tutorial, you can find the R markdown file here: <https://github.com/laylaparast/landest>, it is the file called landest_tutorial.Rmd. First, install the package from CRAN, and load the package.
+
+```{r results = "hide", message=FALSE}
+#install.packages("landest")
+library(landest)
+```
+
+This package provides functions to estimate survival and a treatment effect using a landmark estimation approach. More details on the methods are available in: (1) Parast, L., Tian, L., & Cai, T. (2014). Landmark Estimation of Survival and Treatment Effect in a Randomized Clinical Trial. Journal of the American Statistical Association, 109(505), 384-394, <https://doi.org/10.1080/01621459.2013.842488>, and (2) Parast, L. & Griffin B.A. (2017). Landmark Estimation of Survival and Treatment Effects in Observational Studies. Lifetime Data Analysis, 23:161-182, <https://doi.org/10.1007/s10985-016-9358-z>. 
+
+## Landmark Estimation
+The goal of landmark estimation is to leverage intermediate event information to gain efficiency in estimating survival at some time $t$ and/or the difference in survival at $t$ between two groups, which we will refer to as the treatment and control. That is, in this setting the primary outcome is a time-to-event outcome subject to censoring and the intermediate event is also a time-to-event outcome subject to censoring. In these methods, intermediate event information up to some earlier time point $t_0<t$ is leveraged to gain efficiency; $t_0$ is referred to as the landmark time. The two main functions in this package are `delta.land.rct` for the randomized treatment setting and `delta.land.obs` for the observational, non-randomized treatment setting. We illustrate each below.
+
+## Randomized Trial
+Let's use the example randomized clinical trial (RCT) data available in the package, `example_rct`. This dataset has 3000 observations with the observed time of the primary outcome (`TL`); the primary outcome indicator, which is 1 if the event was observed or 0 if censored (`DL`); the observed time of the intermediate or short-term outcome (`TS`); the intermediate event indicator, which is 1 if the event was observed or 0 if censored (`DS`); a baseline covariate (`Z`); and the treatment group, which is 1 for treatment and 0 for control (`treat`).
+
+```{r}
+data(example_rct)
+names(example_rct)
+head(example_rct)
+```
+The `delta.land.rct` function expects the primary outcome time and indicator information in the arguments`tl` and `dl`; the treatment group is expected in the `treat` argument; the intermediate event information is expected as a matrix in the `short` argument with the time information in the first column and the indicator in the second column; the covariate information, if using, is expected in the `z.cov` argument. If covariates are provided, they are also used to increase efficiency within the landmark estimation approach. Below, we use the RCT function to estimate survival in each treatment group at time $t=2$ and estimate the difference in survival at $t=2$ (`tt` argument) between the two groups; the landmark time used for illustration is $t_0=1$ (`landmark` argument).
+
+```{r}
+out = delta.land.rct(tl=example_rct$TL, dl = example_rct$DL, treat = example_rct$treat, tt=2, landmark = 1, short = cbind(example_rct$TS,example_rct$DS), z.cov = as.matrix(example_rct$Z))
+out
+```
+
+The output includes the estimated survival at $t=2$ in the treated group (`S.estimate.1`) and control group (`S.estimate.0`), and the estimated difference (`delta.estimate`). For inference, we can set `var=TRUE` and `conf.int=TRUE` such that the output will include variance estimates and confidence intervals. Resampling is used for inference, so this can take some time. 
+
+```{r}
+set.seed(1)
+out = delta.land.rct(tl=example_rct$TL, dl = example_rct$DL, treat = example_rct$treat, tt=2, landmark = 1, short = cbind(example_rct$TS,example_rct$DS), z.cov = as.matrix(example_rct$Z), var=TRUE, conf.int=TRUE)
+out
+```
+
+The output now additionally contains variance estimates for each quantity; a p-value for testing whether the difference in survival at $t=2$ is significantly different from 0; and two sets of confidence intervals - one based on a normal approximation and another based on the percentiles from the distribution of resampled estimates. In this example, the estimated survival at time $t=2$ for the treated group is `r round(out$S.estimate.1, 3)` and for the control group is `r round(out$S.estimate.0, 3)`; the estimated difference in survival at time $t=2$ between the two groups is `r round(out$delta.estimate, 3)` which is significantly different from 0 since the p-value is `r round(out$p.value, 3)`.
+
+You may also be interested in knowing what these estimates would be without leveraging intermediate information or covariate information. We can examine this using the `delta.km` function which takes similar arguments and outputs parallel information, also using resampling for inference.
+
+```{r}
+delta.km(tl=example_rct$TL, dl = example_rct$DL, treat = example_rct$treat, tt=2, var=TRUE, conf.int=TRUE)
+```
+
+
+## Observational Study
+
+If the treatment is not randomized, then it is not appropriate to use `delta.land.rct`. For the non-randomized, observational setting, the `delta.land.obs` is appropriate as it similarly leverages intermediate event information but also incorporates propensity score weighting. Let's take a look at the example data in the package for this setting. The variable names are the same as in the randomized setting.
+
+```{r}
+data(example_obs)
+names(example_obs)
+head(example_obs)
+```
+
+Now we will use the function to estimate survival and the difference in survival leveraging intermediate event information, as well as propensity score weighting to account for the non-randomized treatment. With the exception of `cov.for.ps`,  the arguments for this function are similar to the `delta.land.rct` function described above. The user should provide the covariates to be used in propensity score estimation in `cov.for.ps`. The propensity score is the probability of being in the treated group given the baseline covariates. This function uses logistic regression to calculate these scores and constructs weights for the average treatment effect, which is what we are estimating. In this example, the covariate given to `cov.for.ps` and the covariate used to increase efficiency in `z.cov` is the same, but in practice, they can be different.
+
+```{r}
+delta.land.obs(tl=example_obs$TL, dl = example_obs$DL, treat = example_obs$treat, tt=2,
+landmark = 1, short = cbind(example_obs$TS,example_obs$DS), z.cov = as.matrix(example_obs$Z), cov.for.ps = as.matrix(example_obs$Z))
+```
+
+Alternatively, you can estimate your own propensity score weights and supply them to the function in the `ps.weights` argument. We illustrate this using the `ps.wgt.fun` function which uses logistic regression, as above. Then, we provide these propensity score weights to the `delta.land.obs` function in the `ps.weights` argument. 
+
+```{r}
+W.weight = ps.wgt.fun(treat = example_obs$treat, cov.for.ps = as.matrix(example_obs$Z))
+delta.land.obs(tl=example_obs$TL, dl = example_obs$DL, treat = example_obs$treat, tt=2,
+landmark = 1, short = cbind(example_obs$TS,example_obs$DS), z.cov = as.matrix(example_obs$Z), ps.weights = W.weight)
+```
+
+We can obtain estimates for inference as follows. 
+
+```{r}
+out = delta.land.obs(tl=example_obs$TL, dl = example_obs$DL, treat = example_obs$treat, tt=2,
+landmark = 1, short = cbind(example_obs$TS,example_obs$DS), z.cov = as.matrix(example_obs$Z), ps.weights = W.weight, var= TRUE, conf.int=TRUE)
+out
+```
+
+In this observational study example, the estimated survival at time $t=2$ for the treated group is `r round(out$S.estimate.1, 3)` and for the control group is `r round(out$S.estimate.0, 3)`; the estimated difference in survival time $t=2$ between the two groups is `r round(out$delta.estimate, 3)` which is significantly different from 0 since the p-value is `r round(out$p.value, 3)`.
+
+ That's all for now!
+
+---------
