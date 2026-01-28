@@ -10,4 +10,4 @@ More details on the method are available in (1) Parast, L., Tian, L., & Cai, T. 
 and (2) Parast, L. & Griffin B.A. (2017). Landmark Estimation of Survival and Treatment Effects in Observational Studies. Lifetime Data Analysis, 23:161-182, [doi:10.1007/s10985-016-9358-z](https://doi.org/10.1007/s10985-016-9358-z). 
 
 
-Go here to view a tutorial for this package: [landest Tutorial](https://htmlpreview.github.io/?https://github.com/laylaparast/landest/blob/main/landest_tutorial.html). 
+Go here to view a tutorial for this package: [landest Tutorial](https://htmlpreview.github.io/?https://github.com/laylaparast/landest/blob/main/landest_tutorial.html). We have a Shiny app here: [landest Shiny App](https://parastlab.shinyapps.io/landestApp/).
